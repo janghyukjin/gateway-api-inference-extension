@@ -40,6 +40,12 @@ type metricsDatasourceParams struct {
 	Path string `json:"path"`
 	// InsecureSkipVerify defines whether model server certificate should be verified or not.
 	InsecureSkipVerify bool `json:"insecureSkipVerify"`
+	// MetricsPort defines the port to use for scraping metrics from model server pods.
+	// When set, this overrides the inference port encoded in the endpoint's MetricsHost.
+	// Useful when the model server exposes metrics on a separate port from inference
+	// (e.g., vLLM with --metrics-port 9090).
+	// Defaults to 0, which means the inference port is used.
+	MetricsPort int `json:"metricsPort"`
 }
 
 // MetricsDataSourceFactory is a factory function used to instantiate data layer's
@@ -56,7 +62,7 @@ func MetricsDataSourceFactory(name string, parameters json.RawMessage, handle fw
 		}
 	}
 
-	return http.NewHTTPDataSource(cfg.Scheme, cfg.Path, cfg.InsecureSkipVerify, MetricsDataSourceType,
+	return http.NewHTTPDataSource(cfg.Scheme, cfg.Path, cfg.InsecureSkipVerify, cfg.MetricsPort, MetricsDataSourceType,
 		name, parseMetrics, PrometheusMetricType)
 }
 
@@ -76,6 +82,7 @@ const (
 	modelServerMetricsPathFlag               = "model-server-metrics-path"
 	modelServerMetricsSchemeFlag             = "model-server-metrics-scheme"
 	modelServerMetricsInsecureSkipVerifyFlag = "model-server-metrics-https-insecure-skip-verify"
+	modelServerMetricsPortFlag               = "model-server-metrics-port"
 )
 
 // return the default configuration state. The defaults are populated from
@@ -101,6 +108,10 @@ func defaultDataSourceConfigParams() (*metricsDatasourceParams, error) {
 	}
 	cfg.InsecureSkipVerify = insecure
 
+	if port, ok := fromIntFlag(modelServerMetricsPortFlag); ok {
+		cfg.MetricsPort = port
+	}
+
 	return cfg, nil
 }
 
@@ -110,6 +121,18 @@ func fromStringFlag(name string) (string, error) {
 		return "", fmt.Errorf("flag not found: %s", name)
 	}
 	return f.Value.String(), nil
+}
+
+func fromIntFlag(name string) (int, bool) {
+	f := pflag.Lookup(name)
+	if f == nil || !f.Changed {
+		return 0, false
+	}
+	v, err := strconv.Atoi(f.Value.String())
+	if err != nil {
+		return 0, false
+	}
+	return v, true
 }
 
 func fromBoolFlag(name string) (bool, error) {

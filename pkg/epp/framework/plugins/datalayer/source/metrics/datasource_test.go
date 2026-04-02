@@ -28,11 +28,11 @@ import (
 )
 
 func TestDatasource(t *testing.T) {
-	_, err := http.NewHTTPDataSource("invalid", "/metrics", true, MetricsDataSourceType,
+	_, err := http.NewHTTPDataSource("invalid", "/metrics", true, 0, MetricsDataSourceType,
 		"metrics-data-source", parseMetrics, PrometheusMetricType)
 	assert.NotNil(t, err, "expected to fail with invalid scheme")
 
-	source, err := http.NewHTTPDataSource("https", "/metrics", true, MetricsDataSourceType,
+	source, err := http.NewHTTPDataSource("https", "/metrics", true, 0, MetricsDataSourceType,
 		"metrics-data-source", parseMetrics, PrometheusMetricType)
 	assert.Nil(t, err, "failed to create HTTP datasource")
 
